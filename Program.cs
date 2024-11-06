@@ -75,10 +75,8 @@ namespace WebContentToCode
         {
             using Stream memOutput = new MemoryStream();
             using GZipOutputStream zipOut = new(memOutput);
-            using StreamWriter writer = new(zipOut);
-            writer.Write(text);
-
-            writer.Flush();
+            zipOut.Write(text);
+            zipOut.Flush();
             zipOut.Finish();
 
             byte[] bytes = new byte[memOutput.Length];
@@ -141,8 +139,10 @@ namespace WebContentToCode
                 }
             }
 
+            Console.WriteLine($"Writing to file...");
+
             File.WriteAllLines(config.outputFileName, ToArrayDefinitions(convertedFiles));
-            Console.WriteLine($"Done! ({sw.Elapsed.TotalSeconds})");
+            Console.WriteLine($"Done ({sw.Elapsed.TotalSeconds}ms)!");
         }
     }
 }
