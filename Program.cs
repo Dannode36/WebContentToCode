@@ -71,11 +71,11 @@ namespace WebContentToCode
     {
         private static Config config;
 
-        private static byte[] GZipCompress(byte[] text)
+        private static byte[] GZipCompress(byte[] inputBytes)
         {
             using Stream memOutput = new MemoryStream();
             using GZipOutputStream zipOut = new(memOutput);
-            zipOut.Write(text);
+            zipOut.Write(inputBytes);
             zipOut.Flush();
             zipOut.Finish();
 
@@ -85,7 +85,7 @@ namespace WebContentToCode
 
             return bytes;
         }
-
+ 
         private static string Dump(byte[] bytes)
         {
             StringBuilder sb = new();
