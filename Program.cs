@@ -1,8 +1,6 @@
 ﻿using ICSharpCode.SharpZipLib.GZip;
-using System.Globalization;
-using System.IO.Compression;
+using System.Diagnostics;
 using System.Text;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace WebContentToCode
 {
@@ -16,7 +14,9 @@ namespace WebContentToCode
     {
         public Encoding Encoding = Encoding.none;
         public List<string> FileExtensions = [];
+        public string outputFileName = "webFiles.h";
         public bool usePROGMEM = false;
+        public bool allowRecursiveProcessing = false;
 
         public Config(string[] args)
         {
@@ -32,6 +32,9 @@ namespace WebContentToCode
                     {
                         case "-p":
                             usePROGMEM = true;
+                            break;
+                        case "-r":
+                            allowRecursiveProcessing = true;
                             break;
                         default:
                             break;
@@ -53,6 +56,10 @@ namespace WebContentToCode
                             break;
                         }
                         throw new("Unknown encoding: " + arg);
+                    case "-o":
+                        outputFileName = arg;
+                        currentOption = string.Empty; //Reset current option (single arg)
+                        break;
                     default:
                         throw new("Unknown parameter: " + arg);
                 }
@@ -64,12 +71,7 @@ namespace WebContentToCode
     {
         private static Config config;
 
-        private static byte[] ToBytes(string str)
-        {
-            return System.Text.Encoding.UTF8.GetBytes(str);
-        }
-
-        private static byte[] GZipCompress(string text)
+        private static byte[] GZipCompress(byte[] text)
         {
             using Stream memOutput = new MemoryStream();
             using GZipOutputStream zipOut = new(memOutput);
@@ -116,26 +118,31 @@ namespace WebContentToCode
             config = new(args);
             List<(string, byte[])> convertedFiles = [];
 
+            Stopwatch sw = Stopwatch.StartNew();
+
             string currentDir = Directory.GetCurrentDirectory();
             foreach (string file in Directory.EnumerateFiles(currentDir, "*.*", SearchOption.AllDirectories))
             {
-                if (config.FileExtensions.Count == 0 || config.FileExtensions.Any(file.EndsWith))
+                if (config.allowRecursiveProcessing || Path.GetFileName(file) != config.outputFileName && 
+                    (config.FileExtensions.Count == 0 
+                    || config.FileExtensions.Any(file.EndsWith)))
                 {
                     Console.WriteLine("Found file: " + file);
 
                     switch (config.Encoding)
                     {
                         case Encoding.gzip:
-                            convertedFiles.Add((file, GZipCompress(File.ReadAllText(file))));
+                            convertedFiles.Add((file, GZipCompress(File.ReadAllBytes(file))));
                             break;
                         default:
-                            convertedFiles.Add((Path.GetFileName(file), ToBytes(File.ReadAllText(file))));
+                            convertedFiles.Add((Path.GetFileName(file), File.ReadAllBytes(file)));
                             break;
                     }
                 }
             }
 
-            File.WriteAllLines("webFiles.h", ToArrayDefinitions(convertedFiles));
+            File.WriteAllLines(config.outputFileName, ToArrayDefinitions(convertedFiles));
+            Console.WriteLine($"Done! ({sw.Elapsed.TotalSeconds})");
         }
     }
 }
