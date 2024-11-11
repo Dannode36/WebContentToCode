@@ -139,10 +139,10 @@ namespace WebContentToCode
                 }
             }
 
-            Console.WriteLine($"Writing to file...");
+            Console.WriteLine($"Writing {convertedFiles.Sum(x => x.Item2.Length)} bytes to \"{config.outputFileName}\"...");
 
             File.WriteAllLines(config.outputFileName, ToArrayDefinitions(convertedFiles));
-            Console.WriteLine($"Done ({sw.Elapsed.TotalSeconds}ms)!");
+            Console.WriteLine($"Finished in {sw.Elapsed.TotalSeconds} seconds");
         }
     }
 }
