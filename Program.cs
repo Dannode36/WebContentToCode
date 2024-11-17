@@ -17,6 +17,7 @@ namespace WebContentToCode
         public string outputFileName = "webFiles.h";
         public bool usePROGMEM = false;
         public bool allowRecursiveProcessing = false;
+        public bool usePragmaOnce = true;
 
         public Config(string[] args)
         {
@@ -30,11 +31,14 @@ namespace WebContentToCode
                     //Flags (must use continue)
                     switch (currentOption)
                     {
-                        case "-p":
+                        case "-progmem":
                             usePROGMEM = true;
                             break;
                         case "-r":
                             allowRecursiveProcessing = true;
+                            break;
+                        case "-noPragma":
+                            usePragmaOnce = false;
                             break;
                         default:
                             break;
@@ -105,6 +109,11 @@ namespace WebContentToCode
 
         private static IEnumerable<string> ToArrayDefinitions(List<(string, byte[])> convertedFiles)
         {
+            if (config.usePragmaOnce)
+            {
+                yield return "#pragma once\n";
+            }
+
             foreach (var file in convertedFiles)
             {
                 yield return $"const uint8_t {Path.GetFileNameWithoutExtension(file.Item1)}_{Path.GetExtension(file.Item1)[1..]}[] {(config.usePROGMEM ? "PROGMEM " : string.Empty)}= {{ {Dump(file.Item2)} }};\n";
