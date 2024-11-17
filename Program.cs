@@ -136,7 +136,7 @@ namespace WebContentToCode
                 yield return $"const uint8_t {fileName}_{Path.GetExtension(file.Item1)[1..]}[] {(config.usePROGMEM ? "PROGMEM " : string.Empty)}= {{ {Dump(file.Item2)} }};\n";
             }
 
-            yield return "\n//This file was generated with WCTC. Do not change";
+            yield return "//This file was generated with WCTC. Do not change";
         }
 
         static void Main(string[] args)
