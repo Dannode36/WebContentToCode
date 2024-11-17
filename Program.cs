@@ -1,6 +1,7 @@
 ﻿using ICSharpCode.SharpZipLib.GZip;
 using System.Diagnostics;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace WebContentToCode
 {
@@ -10,7 +11,7 @@ namespace WebContentToCode
         gzip
     }
 
-    struct Config
+    partial struct Config
     {
         public Encoding Encoding = Encoding.none;
         public List<string> FileExtensions = [];
@@ -18,6 +19,9 @@ namespace WebContentToCode
         public bool usePROGMEM = false;
         public bool allowRecursiveProcessing = false;
         public bool usePragmaOnce = true;
+
+        public bool unifyCase = false;
+        public const string caseUnifier = "_";
 
         public Config(string[] args)
         {
@@ -39,6 +43,9 @@ namespace WebContentToCode
                             break;
                         case "-noPragma":
                             usePragmaOnce = false;
+                            break;
+                        case "-uc":
+                            unifyCase = true;
                             break;
                         case "-f":
                         case "-e":
@@ -73,6 +80,9 @@ namespace WebContentToCode
                 }
             }
         }
+
+        [GeneratedRegex("[-.]")]
+        public static partial Regex caseUnifyingRegex();
     }
 
     internal class Program
@@ -120,7 +130,10 @@ namespace WebContentToCode
 
             foreach (var file in convertedFiles)
             {
-                yield return $"const uint8_t {Path.GetFileNameWithoutExtension(file.Item1)}_{Path.GetExtension(file.Item1)[1..]}[] {(config.usePROGMEM ? "PROGMEM " : string.Empty)}= {{ {Dump(file.Item2)} }};\n";
+                string fileNameNoExtension = Path.GetFileNameWithoutExtension(file.Item1);
+                string fileName = config.unifyCase ? Config.caseUnifyingRegex().Replace(fileNameNoExtension, Config.caseUnifier) : fileNameNoExtension;
+
+                yield return $"const uint8_t {fileName}_{Path.GetExtension(file.Item1)[1..]}[] {(config.usePROGMEM ? "PROGMEM " : string.Empty)}= {{ {Dump(file.Item2)} }};\n";
             }
         }
 
