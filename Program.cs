@@ -40,8 +40,12 @@ namespace WebContentToCode
                         case "-noPragma":
                             usePragmaOnce = false;
                             break;
-                        default:
+                        case "-f":
+                        case "-e":
+                        case "-o":
                             break;
+                        default:
+                            throw new("Unknown option: " + arg);
                     }
                     continue;
                 }
