@@ -20,8 +20,10 @@ namespace WebContentToCode
         public bool allowRecursiveProcessing = false;
         public bool usePragmaOnce = true;
 
-        public bool unifyCase = false;
+        [GeneratedRegex("[-.]")]
+        public static partial Regex caseUnifyingRegex();
         public const string caseUnifier = "_";
+        public bool unifyCase = false;
 
         public Config(string[] args)
         {
@@ -80,9 +82,6 @@ namespace WebContentToCode
                 }
             }
         }
-
-        [GeneratedRegex("[-.]")]
-        public static partial Regex caseUnifyingRegex();
     }
 
     internal class Program
@@ -100,43 +99,7 @@ namespace WebContentToCode
             byte[] bytes = new byte[memOutput.Length];
             memOutput.Seek(0, SeekOrigin.Begin);
             memOutput.Read(bytes, 0, bytes.Length);
-
             return bytes;
-        }
- 
-        private static string Dump(byte[] bytes)
-        {
-            StringBuilder sb = new();
-
-            for (int i = 0; i < bytes.Length; i++)
-            {
-                sb.Append("0x" + bytes[i].ToString("X2").ToLower());
-
-                if (i != bytes.Length - 1)
-                {
-                    sb.Append(',');
-                }
-            }
-
-            return sb.ToString();
-        }
-
-        private static IEnumerable<string> ToArrayDefinitions(List<(string, byte[])> convertedFiles)
-        {
-            if (config.usePragmaOnce)
-            {
-                yield return "#pragma once\n";
-            }
-
-            foreach (var file in convertedFiles)
-            {
-                string fileNameNoExtension = Path.GetFileNameWithoutExtension(file.Item1);
-                string fileName = config.unifyCase ? Config.caseUnifyingRegex().Replace(fileNameNoExtension, Config.caseUnifier) : fileNameNoExtension;
-
-                yield return $"const uint8_t {fileName}_{Path.GetExtension(file.Item1)[1..]}[] {(config.usePROGMEM ? "PROGMEM " : string.Empty)}= {{ {Dump(file.Item2)} }};\n";
-            }
-
-            yield return "//This file was generated with WCTC. Do not change";
         }
 
         static void Main(string[] args)
@@ -144,32 +107,63 @@ namespace WebContentToCode
             config = new(args);
             List<(string, byte[])> convertedFiles = [];
 
+            //Metrics
             Stopwatch sw = Stopwatch.StartNew();
+            int originalByteCount = 0;
 
             string currentDir = Directory.GetCurrentDirectory();
             foreach (string file in Directory.EnumerateFiles(currentDir, "*.*", SearchOption.AllDirectories))
             {
-                if (config.allowRecursiveProcessing || Path.GetFileName(file) != config.outputFileName && 
-                    (config.FileExtensions.Count == 0 
-                    || config.FileExtensions.Any(file.EndsWith)))
+                if (config.allowRecursiveProcessing || Path.GetFileName(file) != config.outputFileName
+                    && (config.FileExtensions.Count == 0 || config.FileExtensions.Any(file.EndsWith)))
                 {
                     Console.WriteLine("Found file: " + file);
+
+                    byte[] bytes = File.ReadAllBytes(file);
+                    originalByteCount += bytes.Length;
 
                     switch (config.Encoding)
                     {
                         case Encoding.gzip:
-                            convertedFiles.Add((file, GZipCompress(File.ReadAllBytes(file))));
+                            convertedFiles.Add((file, GZipCompress(bytes)));
                             break;
                         default:
-                            convertedFiles.Add((Path.GetFileName(file), File.ReadAllBytes(file)));
+                            convertedFiles.Add((Path.GetFileName(file), bytes));
                             break;
                     }
                 }
             }
 
-            Console.WriteLine($"Writing {convertedFiles.Sum(x => x.Item2.Length)} bytes to \"{config.outputFileName}\"...");
+            int compressedByteCount = convertedFiles.Sum(x => x.Item2.Length);
+            float compressionPercent = MathF.Round(compressedByteCount / (float)originalByteCount * 100, 2);
+            Console.WriteLine($"Writing {compressedByteCount}/{originalByteCount} ({compressionPercent}%) bytes to \"{config.outputFileName}\"...");
 
-            File.WriteAllLines(config.outputFileName, ToArrayDefinitions(convertedFiles));
+            //Write to output file (this is so readable)
+            using (StreamWriter outFile = new(config.outputFileName))
+            {
+                if (config.usePragmaOnce)
+                {
+                    outFile.WriteLine("#pragma once\n");
+                }
+
+                outFile.WriteLine("//This file was generated with WCTC. Do not change.\n");
+
+                foreach (var file in convertedFiles)
+                {
+                    string fileNameNoExtension = Path.GetFileNameWithoutExtension(file.Item1);
+                    string fileName = config.unifyCase ? Config.caseUnifyingRegex().Replace(fileNameNoExtension, Config.caseUnifier) : fileNameNoExtension;
+
+                    outFile.Write($"const uint8_t {fileName}_{Path.GetExtension(file.Item1)[1..]}[] {(config.usePROGMEM ? "PROGMEM " : string.Empty)}= {{ ");
+
+                    for (int i = 0; i < file.Item2.Length; i++)
+                    {
+                        outFile.Write("0x" + file.Item2[i].ToString("X2").ToLower() + (i != file.Item2.Length - 1 ? "," : string.Empty));
+                    }
+
+                    outFile.WriteLine(" };\n");
+                }
+            }
+
             Console.WriteLine($"Finished in {sw.Elapsed.TotalSeconds} seconds");
         }
     }

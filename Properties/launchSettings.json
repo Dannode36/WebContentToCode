@@ -2,7 +2,7 @@
   "profiles": {
     "WebContentToCode": {
       "commandName": "Project",
-      "commandLineArgs": "-o files.cs\r\n"
+      "commandLineArgs": "-o files.cs -e gzip\r\n"
     }
   }
 }
