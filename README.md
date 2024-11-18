@@ -24,3 +24,6 @@ pause
 ```
 
 This one reads .html, .css, .js, .png files, compresses them with GZip, attaches the PROGMEM macro to each array and unifies their names, and finally ouputs everthing to `file.h`.
+
+## Dependencies
+- [SharpZipLib](https://github.com/icsharpcode/SharpZipLib)
