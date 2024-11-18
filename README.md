@@ -13,3 +13,14 @@ Then a C++ header-like file will be generated containing `const uint8_t` arrays 
 - `-r (flag)` allows WCTC to process the output file (kinda recursive and therefore is not enabled by default)
 - `-noPragma (flag)` removes `#pragma once` from the top of the ouput file
 - `-uc (flag)` will replace all seperators in each filename with `_` (unify case)
+
+## How do I use this?
+Currently my personal method of execution is to place the executable and a batch file in the same directory cause I'm too lazy to set up an environment variable.
+
+Batch script: 
+```
+WebContentToCode.exe -f html css js png -e gzip -progmem -uc -o C:\Users\name\path\to\the\output\file.h
+pause
+```
+
+This one reads .html, .css, .js, .png files, compresses them with GZip, attaches the PROGMEM macro to each array and unifies their names, and finally ouputs everthing to `file.h`.
